@@ -26,13 +26,22 @@ def urls_for(files):
 
 def commit_queue(qfile):
     subprocess.run(["git", "-C", HERE, "add", qfile], check=True, capture_output=True, text=True)
-    try:
-        subprocess.run(["git", "-C", HERE, "commit", "-m", f"mark posted in {qfile}"],
-                       check=True, capture_output=True, text=True)
-        subprocess.run(["git", "-C", HERE, "push", "origin", "main"],
-                       check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as e:
-        if "nothing to commit" not in (e.stdout + e.stderr): raise
+    c = subprocess.run(["git", "-C", HERE, "commit", "-m", f"mark posted in {qfile}"],
+                       capture_output=True, text=True)
+    if c.returncode != 0 and "nothing to commit" not in (c.stdout + c.stderr):
+        raise RuntimeError("commit failed: " + c.stdout + c.stderr)
+    # push with rebase-retry: 投稿は成功済みなのでキュー更新は何としても通す
+    # （IG/Threadsが同リポへ同時pushしてもnon-fast-forwardをrebaseで吸収＝二重投稿防止）
+    last = ""
+    for _ in range(5):
+        p = subprocess.run(["git", "-C", HERE, "push", "origin", "main"],
+                           capture_output=True, text=True)
+        if p.returncode == 0:
+            return
+        last = p.stdout + p.stderr
+        subprocess.run(["git", "-C", HERE, "pull", "--rebase", "origin", "main"],
+                       capture_output=True, text=True)
+    raise RuntimeError("git push failed after retries: " + last)
 
 def run(platform):
     qname = "ig_queue.json" if platform == "ig" else "threads_queue.json"
