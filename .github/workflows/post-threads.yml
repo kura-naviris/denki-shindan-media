@@ -1,0 +1,28 @@
+name: post-threads
+on:
+  schedule:
+    - cron: '0 23 * * *'   # 08:00 JST（前日23:00 UTC）
+    - cron: '0 11 * * *'   # 20:00 JST（11:00 UTC）
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: post-threads
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: configure git
+        run: |
+          git config user.name "denki-bot"
+          git config user.email "denki-bot@users.noreply.github.com"
+      - name: post next Threads item
+        env:
+          TH_USER_ID: ${{ secrets.TH_USER_ID }}
+          TH_ACCESS_TOKEN: ${{ secrets.TH_ACCESS_TOKEN }}
+          MEDIA_OWNER: kura-naviris
+          MEDIA_REPO: denki-shindan-media
+        run: python3 run.py threads

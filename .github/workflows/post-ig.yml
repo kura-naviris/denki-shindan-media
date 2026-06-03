@@ -1,0 +1,28 @@
+name: post-ig
+on:
+  schedule:
+    - cron: '0 10 * * 1,3,5'   # 月・水・金 19:00 JST
+  workflow_dispatch:           # 手動実行も可
+permissions:
+  contents: write
+concurrency: post-ig
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: configure git
+        run: |
+          git config user.name "denki-bot"
+          git config user.email "denki-bot@users.noreply.github.com"
+      - name: post next IG item
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          MEDIA_OWNER: kura-naviris
+          MEDIA_REPO: denki-shindan-media
+          # DRY_RUN: '1'   # ← 初回テストは公開せずコンテナ生成のみ。本番でコメントアウト
+        run: python3 run.py ig
